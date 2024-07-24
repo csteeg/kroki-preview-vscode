@@ -4,8 +4,10 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
+import { getExtensionUri } from "../extension";
 import { Logger } from "../logger";
 
+//this class needs some heavy refactoring, making it work first
 export class HTMLContentProvider {
   constructor(private readonly context: vscode.ExtensionContext, private readonly logger: Logger) {}
 
@@ -70,20 +72,29 @@ export class HTMLContentProvider {
     const tempDir = os.tmpdir();
     const tempFolderName = `krokipreview/${Date.now()}`;
     const tempFolder = path.join(tempDir, tempFolderName);
-    const tempJson = path.join(tempFolder, "workspace.json");
     fs.mkdirSync(tempFolder, { recursive: true });
 
     const cachedPostFix = `.krokipreview.${Date.now()}`;
     const isDirty = document.isDirty;
     const filePath = document.uri.fsPath + (isDirty ? cachedPostFix : "");
-    fs.writeFileSync(filePath, document.getText());
+    if (isDirty) {
+      fs.writeFileSync(filePath, document.getText());
+    }
 
     const commandprefix = isWindows ? "" : "sh ";
     const toJsonCommand = `${commandprefix}${structurizrCliPath} export --workspace ${filePath} --format json --output ${tempFolder}`;
-    const toPumlCommand = `${commandprefix}${structurizrCliPath} export --workspace ${tempJson} --format plantuml --output ${tempFolder}`;
 
     try {
       cp.execSync(toJsonCommand);
+
+      const dirCont = fs.readdirSync(tempFolder);
+      const tempJsonFile = dirCont.find((elm) => elm.match(/.*\.(json?)/gi));
+      if (!tempJsonFile) {
+        throw new Error("Error converting structurizr files to json");
+      }
+      const tempJson = path.join(tempFolder, tempJsonFile);
+      const toPumlCommand = `${commandprefix}${structurizrCliPath} export --workspace ${tempJson} --format plantuml --output ${tempFolder}`;
+
       cp.execSync(toPumlCommand);
 
       const structurizrData = JSON.parse(fs.readFileSync(tempJson, "utf-8"));
@@ -142,12 +153,16 @@ export class HTMLContentProvider {
     }
   }
 
-  public provideLoaderDocumentContent(): string {
+  private getLoaderHtml(webview: vscode.Webview): string {
     return `
 <html>
 <head>
-    <link rel="stylesheet" href="${this.extensionResourcePath("css/preview.css")}">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-resource: https: data:; media-src vscode-resource: https: data:; script-src https: vscode-resource:; style-src vscode-resource: 'unsafe-inline' https: data:; font-src vscode-resource: https: data:;">
+    <link rel="stylesheet" href="${this.extensionResourcePath(webview, "css/preview.css")}">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${
+      webview.cspSource
+    } https:; script-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${
+      webview.cspSource
+    } 'unsafe-inline';">
 </head>
 <body>
     <div id="spinner-container">
@@ -166,44 +181,16 @@ export class HTMLContentProvider {
 </html>`;
   }
 
-  private errorDocumentContent(errorHtml: string): string {
+  private errorDocumentContent(errorHtml: string, webview: vscode.Webview): string {
     return `
 <html>
 <head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-resource: https: data:; media-src vscode-resource: https: data:; script-src https: vscode-resource:; style-src vscode-resource: 'unsafe-inline' https: data:; font-src vscode-resource: https: data:;">
-    <style>
-        body {
-
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
-            margin: 20px;
-            padding: 20px;
-        }
-        .container {
-            max-width: 85%;
-            margin: 0 auto;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-        }
-        h1, h3 {
-            color: #d9534f;
-            font-size: 24px;
-            border-bottom: 2px solid #d9534f;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        p, pre {
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        pre {
-          white-space: pre-wrap;
-        }
-    </style>
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${
+        webview.cspSource
+      } https:; script-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${
+      webview.cspSource
+    } 'unsafe-inline';">
+      <link rel="stylesheet" href="${this.extensionResourcePath(webview, "css/error.css")}">
 </head>
 <body>
     <div class="container">
@@ -213,11 +200,10 @@ export class HTMLContentProvider {
 </html>`;
   }
 
-  public async provideTextDocumentContent(
-    document: vscode.TextDocument,
-    initialLine: number | undefined = undefined
-  ): Promise<string> {
-    this.logger.log("provideTextDocumentContent", { source: document.uri.toString(), line: initialLine });
+  public async loadPreview(document: vscode.TextDocument, webview: vscode.Webview): Promise<string> {
+    this.logger.log("provideTextDocumentContent", { source: document.uri.toString(), cspSource: webview.cspSource });
+
+    webview.html = this.getLoaderHtml(webview);
 
     let { imgHtml, errorHtml } = await this.getImages(document);
 
@@ -226,7 +212,7 @@ export class HTMLContentProvider {
     }
 
     if (errorHtml && errorHtml !== "" && (imgHtml === "" || !imgHtml)) {
-      return this.errorDocumentContent(errorHtml);
+      return this.errorDocumentContent(errorHtml, webview);
     }
 
     const settings = JSON.stringify({
@@ -238,19 +224,23 @@ export class HTMLContentProvider {
     return `
 <html>
 <head>
-    <link rel="stylesheet" href="${this.extensionResourcePath("css/preview.css")}">
-    <script src="${this.extensionResourcePath("js/dragscroll.js")}"></script>
-    <script src="${this.extensionResourcePath("js/hyperlink.js")}"></script>
-    <script src="${this.extensionResourcePath("js/switcher.js")}"></script>
-    <script src="${this.extensionResourcePath("js/zoom.js")}"></script>
-    <script src="${this.extensionResourcePath("js/imageMapResizer.js")}"></script>
-    <script src="${this.extensionResourcePath("js/preview.js")}"></script>
-    <script src="${this.extensionResourcePath("js/cursor.js")}"></script>
-    <script src="${this.extensionResourcePath("js/selectionZoom.js")}"></script>
-    <script src="${this.extensionResourcePath("js/clickEvent.js")}"></script>
-    <script src="${this.extensionResourcePath("js/modal.js")}"></script>
-    <script src="${this.extensionResourcePath("js/tip.js")}"></script>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-resource: https: data:; media-src vscode-resource: https: data:; script-src https: vscode-resource:; style-src vscode-resource: 'unsafe-inline' https: data:; font-src vscode-resource: https: data:;">
+    <link rel="stylesheet" href="${this.extensionResourcePath(webview, "css/preview.css")}">
+    <script src="${this.extensionResourcePath(webview, "js/dragscroll.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/hyperlink.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/switcher.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/zoom.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/imageMapResizer.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/preview.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/cursor.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/selectionZoom.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/clickEvent.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/modal.js")}"></script>
+    <script src="${this.extensionResourcePath(webview, "js/tip.js")}"></script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${
+      webview.cspSource
+    } https:; script-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${
+      webview.cspSource
+    } 'unsafe-inline';">
 </head>
 <body>
     <div id="snap-indicator-container">
@@ -366,9 +356,7 @@ export class HTMLContentProvider {
     return `<h3>${title}</h3><p>${details}.</p>`;
   }
 
-  private extensionResourcePath(mediaFile: string): string {
-    return vscode.Uri.file(this.context.asAbsolutePath(path.join("media", mediaFile)))
-      .with({ scheme: "vscode-resource" })
-      .toString();
+  private extensionResourcePath(webview: vscode.Webview, mediaFile: string): vscode.Uri {
+    return webview.asWebviewUri(vscode.Uri.joinPath(getExtensionUri(), "media", mediaFile));
   }
 }

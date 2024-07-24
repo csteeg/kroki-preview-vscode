@@ -287,12 +287,11 @@ export class HTMLPreview {
     this.editor.title = HTMLPreview.getPreviewTitle(this._resource, this._locked);
     this.editor.iconPath = this.iconPath;
     this.editor.webview.options = HTMLPreview.getWebviewOptions(resource);
-    this.editor.webview.html = this._contentProvider.provideLoaderDocumentContent();
 
     this.forceUpdate = false;
 
     this.currentVersion = { resource, version: document.version };
-    const content: string = await this._contentProvider.provideTextDocumentContent(document);
+    const content: string = await this._contentProvider.loadPreview(document, this.editor.webview);
     if (this._resource === resource) {
       this.editor.webview.html = content;
     }

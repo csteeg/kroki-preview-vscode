@@ -12,13 +12,19 @@ import { Logger } from "./logger";
 import { isPreviewableFile } from "./util/file";
 
 let extensionPath = "";
+let extensionUri: vscode.Uri;
 
 export function getExtensionPath(): string {
   return extensionPath;
 }
 
+export function getExtensionUri(): vscode.Uri {
+  return extensionUri;
+}
+
 export function activate(context: vscode.ExtensionContext) {
   extensionPath = context.extensionPath;
+  extensionUri = context.extensionUri;
 
   const logger = new Logger();
 
