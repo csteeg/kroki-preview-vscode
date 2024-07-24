@@ -3,47 +3,59 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
-import { CommandManager } from './commandManager';
-import * as commands from './commands/index';
-import { HTMLContentProvider } from './features/previewContentProvider';
-import { HTMLPreviewManager } from './features/previewManager';
-import { Logger } from './logger';
-import { ExtensionContentSecurityPolicyArbiter, PreviewSecuritySelector } from './security';
+import * as vscode from "vscode";
+import { CommandManager } from "./commandManager";
+import * as commands from "./commands/index";
+import { HTMLContentProvider } from "./features/previewContentProvider";
+import { HTMLPreviewManager } from "./features/previewManager";
+import { Logger } from "./logger";
+import { isPreviewableFile } from "./util/file";
 
 let extensionPath = "";
 
 export function getExtensionPath(): string {
-	return extensionPath;
+  return extensionPath;
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	extensionPath = context.extensionPath;
+  extensionPath = context.extensionPath;
 
-	const cspArbiter = new ExtensionContentSecurityPolicyArbiter(context.globalState, context.workspaceState);
-	const logger = new Logger();
+  const logger = new Logger();
 
-	const contentProvider = new HTMLContentProvider(context, cspArbiter, logger);
-	const previewManager = new HTMLPreviewManager(contentProvider, logger);
-	context.subscriptions.push(previewManager);
+  const contentProvider = new HTMLContentProvider(context, logger);
+  const previewManager = new HTMLPreviewManager(contentProvider, logger);
+  context.subscriptions.push(previewManager);
 
+  const commandManager = new CommandManager();
+  context.subscriptions.push(commandManager);
+  commandManager.register(new commands.ShowPreviewCommand(previewManager));
+  commandManager.register(new commands.ShowPreviewToSideCommand(previewManager));
+  commandManager.register(new commands.ShowLockedPreviewToSideCommand(previewManager));
+  commandManager.register(new commands.ShowSourceCommand(previewManager));
+  commandManager.register(new commands.RefreshPreviewCommand(previewManager));
+  commandManager.register(new commands.MoveCursorToPositionCommand());
+  commandManager.register(new commands.OpenDocumentLinkCommand());
+  commandManager.register(new commands.ToggleLockCommand(previewManager));
 
-	const previewSecuritySelector = new PreviewSecuritySelector(cspArbiter, previewManager);
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(() => {
+      logger.updateConfiguration();
+    })
+  );
 
-	const commandManager = new CommandManager();
-	context.subscriptions.push(commandManager);
-	commandManager.register(new commands.ShowPreviewCommand(previewManager));
-	commandManager.register(new commands.ShowPreviewToSideCommand(previewManager));
-	commandManager.register(new commands.ShowLockedPreviewToSideCommand(previewManager));
-	commandManager.register(new commands.ShowSourceCommand(previewManager));
-	commandManager.register(new commands.RefreshPreviewCommand(previewManager));
-	commandManager.register(new commands.MoveCursorToPositionCommand());
-	commandManager.register(new commands.ShowPreviewSecuritySelectorCommand(previewSecuritySelector, previewManager));
-	commandManager.register(new commands.OpenDocumentLinkCommand());
-	commandManager.register(new commands.ToggleLockCommand(previewManager));
+  vscode.workspace.onDidOpenTextDocument((document) => {
+    if (isPreviewableFile(document)) {
+      // Logic to show or enable the command/menu item
+      vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", true);
+    } else {
+      vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", false);
+    }
+  });
 
-	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(() => {
-		logger.updateConfiguration();
-		previewManager.updateConfiguration();
-	}));
+  vscode.workspace.textDocuments.forEach((document) => {
+    const extname = document.uri.fsPath.split(".").pop();
+    if (isPreviewableFile(document)) {
+      vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", true);
+    }
+  });
 }

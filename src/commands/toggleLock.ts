@@ -3,17 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Command } from '../commandManager';
-import { HTMLPreviewManager } from '../features/previewManager';
+import { Command } from "../commandManager";
+import { HTMLPreviewManager } from "../features/previewManager";
 
 export class ToggleLockCommand implements Command {
-	public readonly id = 'html.preview.toggleLock';
+  public readonly id = "kroki.preview.toggleLock";
 
-	public constructor(
-		private readonly previewManager: HTMLPreviewManager
-	) { }
+  public constructor(private readonly previewManager: HTMLPreviewManager) {}
 
-	public execute() {
-		this.previewManager.toggleLock();
-	}
+  public execute() {
+    this.previewManager.toggleLock();
+  }
 }

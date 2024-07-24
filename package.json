@@ -1,24 +1,24 @@
 {
-	"name": "html-preview-vscode",
+	"name": "kroki-preview-vscode",
 	"displayName": "%displayName%",
 	"description": "%description%",
-	"version": "0.2.5",
-	"publisher": "tht13",
-	"author": "Thomas Haakon Townsend",
+	"version": "0.0.1",
+	"publisher": "csteeg",
+	"author": "Chris van de Steeg",
 	"license": "MIT",
 	"readme": "README.md",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/tht13/html-preview-vscode"
+		"url": "https://github.com/csteeg/kroki-preview-vscode"
 	},
 	"galleryBanner": {
 		"color": "#78d6f0",
 		"theme": "light"
 	},
-	"bugs": "https://github.com/tht13/html-preview-vscode/issues",
-	"homepage": "https://github.com/tht13/html-preview-vscode/blob/master/README.md",
+	"bugs": "https://github.com/csteeg/kroki-preview-vscode/issues",
+	"homepage": "https://github.com/csteeg/kroki-preview-vscode/",
 	"icon": "icon.png",
-	"main": "./out/extension.js",
+	"main": "./dist/extension.js",
 	"engines": {
 		"vscode": "^1.26.0"
 	},
@@ -26,160 +26,133 @@
 		"Programming Languages"
 	],
 	"activationEvents": [
-		"onLanguage:html",
-		"onCommand:html.preview.toggleLock",
-		"onCommand:html.preview.refresh",
-		"onCommand:html.showPreview",
-		"onCommand:html.showPreviewToSide",
-		"onCommand:html.showLockedPreviewToSide",
-		"onCommand:html.showSource",
-		"onCommand:html.showPreviewSecuritySelector",
-		"onWebviewPanel:html.preview"
+		"*"
 	],
 	"contributes": {
 		"commands": [
 			{
-				"command": "html.showPreview",
-				"title": "%html.preview.title%",
-				"category": "HTML",
+				"command": "kroki.showPreview",
+				"title": "%kroki.preview.title%",
+				"category": "Kroki",
 				"icon": {
 					"light": "./media/Preview.svg",
 					"dark": "./media/Preview_inverse.svg"
 				}
 			},
 			{
-				"command": "html.showPreviewToSide",
-				"title": "%html.previewSide.title%",
-				"category": "HTML",
+				"command": "kroki.showPreviewToSide",
+				"title": "%kroki.previewSide.title%",
+				"category": "Kroki",
 				"icon": {
 					"light": "./media/PreviewOnRightPane_16x.svg",
 					"dark": "./media/PreviewOnRightPane_16x_dark.svg"
 				}
 			},
 			{
-				"command": "html.showLockedPreviewToSide",
-				"title": "%html.showLockedPreviewToSide.title%",
-				"category": "HTML",
+				"command": "kroki.showLockedPreviewToSide",
+				"title": "%kroki.showLockedPreviewToSide.title%",
+				"category": "Kroki",
 				"icon": {
 					"light": "./media/PreviewOnRightPane_16x.svg",
 					"dark": "./media/PreviewOnRightPane_16x_dark.svg"
 				}
 			},
 			{
-				"command": "html.showSource",
-				"title": "%html.showSource.title%",
-				"category": "HTML",
+				"command": "kroki.showSource",
+				"title": "%kroki.showSource.title%",
+				"category": "Kroki",
 				"icon": {
 					"light": "./media/ViewSource.svg",
 					"dark": "./media/ViewSource_inverse.svg"
 				}
 			},
 			{
-				"command": "html.showPreviewSecuritySelector",
-				"title": "%html.showPreviewSecuritySelector.title%",
-				"category": "HTML"
+				"command": "kroki.preview.refresh",
+				"title": "%kroki.preview.refresh.title%",
+				"category": "Kroki"
 			},
 			{
-				"command": "html.preview.refresh",
-				"title": "%html.preview.refresh.title%",
-				"category": "HTML"
-			},
-			{
-				"command": "html.preview.toggleLock",
-				"title": "%html.preview.toggleLock.title%",
-				"category": "HTML"
+				"command": "kroki.preview.toggleLock",
+				"title": "%kroki.preview.toggleLock.title%",
+				"category": "Kroki"
 			}
 		],
 		"menus": {
 			"editor/title": [
 				{
-					"command": "html.showPreviewToSide",
-					"when": "editorLangId == html",
-					"alt": "html.showPreview",
+					"command": "kroki.showPreviewToSide",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
 					"group": "navigation"
 				},
 				{
-					"command": "html.showSource",
-					"when": "htmlPreviewFocus",
+					"command": "kroki.showSource",
+					"when": "kroki.PreviewFocus",
 					"group": "navigation"
 				},
 				{
-					"command": "html.preview.refresh",
-					"when": "htmlPreviewFocus",
-					"group": "1_html"
+					"command": "kroki.preview.refresh",
+					"when": "kroki.PreviewFocus",
+					"group": "navigation"
 				},
 				{
-					"command": "html.preview.toggleLock",
-					"when": "htmlPreviewFocus",
-					"group": "1_html"
-				},
-				{
-					"command": "html.showPreviewSecuritySelector",
-					"when": "htmlPreviewFocus",
-					"group": "1_html"
+					"command": "kroki.preview.toggleLock",
+					"when": "kroki.PreviewFocus",
+					"group": "navigation"
 				}
 			],
 			"explorer/context": [
 				{
-					"command": "html.showPreview",
-					"when": "resourceLangId == html",
+					"command": "kroki.showPreview",
+					"when": "kroki.previewCommandsEnabled  && !kroki.PreviewFocus",
 					"group": "navigation"
 				}
 			],
 			"editor/title/context": [
 				{
-					"command": "html.showPreview",
-					"when": "resourceLangId == html",
+					"command": "kroki.showPreview",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
 					"group": "navigation"
 				}
 			],
 			"commandPalette": [
 				{
-					"command": "html.showPreview",
-					"when": "editorLangId == html",
+					"command": "kroki.showPreview",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
 					"group": "navigation"
 				},
 				{
-					"command": "html.showPreviewToSide",
-					"when": "editorLangId == html",
+					"command": "kroki.showPreviewToSide",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
 					"group": "navigation"
 				},
 				{
-					"command": "html.showLockedPreviewToSide",
-					"when": "editorLangId == html",
+					"command": "kroki.showLockedPreviewToSide",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
 					"group": "navigation"
 				},
 				{
-					"command": "html.showSource",
-					"when": "htmlPreviewFocus",
+					"command": "kroki.showSource",
+					"when": "kroki.PreviewFocus",
 					"group": "navigation"
 				},
 				{
-					"command": "html.showPreviewSecuritySelector",
-					"when": "editorLangId == html"
-				},
-				{
-					"command": "html.showPreviewSecuritySelector",
-					"when": "htmlPreviewFocus"
-				},
-				{
-					"command": "html.preview.toggleLock",
-					"when": "htmlPreviewFocus"
+					"command": "kroki.preview.toggleLock",
+					"when": "kroki.PreviewFocus"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "html.showPreview",
+				"command": "kroki.showPreview",
 				"key": "shift+ctrl+v",
 				"mac": "shift+cmd+v",
-				"when": "editorLangId == html"
+				"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus"
 			},
 			{
-				"command": "html.showPreviewToSide",
+				"command": "kroki.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "editorLangId == html"
+				"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus"
 			}
 		],
 		"configuration": {
@@ -187,72 +160,184 @@
 			"title": "HTML",
 			"order": 20,
 			"properties": {
-				"html.preview.scrollPreviewWithEditor": {
-					"type": "boolean",
-					"default": true,
-					"description": "%html.preview.scrollPreviewWithEditor.desc%",
-					"scope": "resource"
-				},
-				"html.preview.markEditorSelection": {
-					"type": "boolean",
-					"default": true,
-					"description": "%html.preview.markEditorSelection.desc%",
-					"scope": "resource"
-				},
-				"html.preview.scrollEditorWithPreview": {
-					"type": "boolean",
-					"default": true,
-					"description": "%html.preview.scrollEditorWithPreview.desc%",
-					"scope": "resource"
-				},
-				"html.preview.doubleClickToSwitchToEditor": {
-					"type": "boolean",
-					"default": true,
-					"description": "%html.preview.doubleClickToSwitchToEditor.desc%",
-					"scope": "resource"
-				},
-				"html.trace": {
+				"kroki.trace": {
 					"type": "string",
 					"enum": [
 						"off",
 						"verbose"
 					],
 					"default": "off",
-					"description": "%html.trace.desc%",
+					"description": "%kroki.trace.desc%",
 					"scope": "window"
+				},
+				"kroki.supportedFiles": {
+					"type": "array",
+					"items": {
+						"type": "object"
+					},
+					"default": [
+						{
+							"extension": ".dsl",
+							"type": "structurizr"
+						},
+						{
+							"extension": ".puml",
+							"type": "plantuml"
+						},
+						{
+							"extension": ".mmd",
+							"type": "mermaid"
+						},
+						{
+							"extension": ".mermaid",
+							"type": "mermaid"
+						},
+						{
+							"extension": ".dot",
+							"type": "graphviz"
+						},
+						{
+							"extension": ".actdiag",
+							"type": "actdiag"
+						},
+						{
+							"extension": ".blockdiag",
+							"type": "blockdiag"
+						},
+						{
+							"extension": ".c4plantuml",
+							"type": "c4plantuml"
+						},
+						{
+							"extension": ".ditaa",
+							"type": "ditaa"
+						},
+						{
+							"extension": ".erd",
+							"type": "erd"
+						},
+						{
+							"extension": ".nomnoml",
+							"type": "nomnoml"
+						},
+						{
+							"extension": ".nwdiag",
+							"type": "nwdiag"
+						},
+						{
+							"extension": ".seqdiag",
+							"type": "seqdiag"
+						},
+						{
+							"extension": ".svgbob",
+							"type": "svgbob"
+						},
+						{
+							"extension": ".symbolator",
+							"type": "symbolator"
+						},
+						{
+							"extension": ".umlet",
+							"type": "umlet"
+						},
+						{
+							"extension": ".vega",
+							"type": "vega"
+						},
+						{
+							"extension": ".vegalite",
+							"type": "vegalite"
+						},
+						{
+							"extension": ".bpmn",
+							"type": "bpmn"
+						},
+						{
+							"extension": ".bytefield",
+							"type": "bytefield"
+						},
+						{
+							"extension": ".d2",
+							"type": "d2"
+						},
+						{
+							"extension": ".dbml",
+							"type": "dbml"
+						},
+						{
+							"extension": ".excalidraw",
+							"type": "excalidraw"
+						},
+						{
+							"extension": ".pikchr",
+							"type": "pikchr"
+						},
+						{
+							"extension": ".tikz",
+							"type": "tikz"
+						},
+						{
+							"extension": ".wavedrom",
+							"type": "wavedrom"
+						},
+						{
+							"extension": ".wireviz",
+							"type": "wireviz"
+						}
+					],
+					"description": "File extensions supported by the Kroki previewer"
 				}
 			}
 		}
 	},
 	"scripts": {
+		"dist:stable": "vsce package",
+		"dist": "vsce package --pre-release",
+		"vscode:prepublish": "npm run package",
+		"compile": "webpack --mode development --stats-error-details",
+		"bak.compile": "npm run compile-ext && npm run compile-previewer",
+		"compile-ext": "webpack --mode development --stats-error-details",
+		"compile-previewer": "webpack --mode development --stats-error-details --config preview-src/webpack.config.js",
+		"watch": "webpack --mode development --stats-error-details --watch",
+		"package": "webpack --mode production --devtool hidden-source-map",
+		"lint": "eslint src --ext ts",
+		"test": "vscode-test"
+	},
+	"scripts.bak": {
+		"dist:stable": "vsce package",
+		"dist": "vsce package --pre-release",
 		"vscode:prepublish": "npm run compile",
 		"compile": "npm run build-ext && npm run build-preview",
 		"build-ext": "npx tsc -p ./tsconfig.json",
-		"build-preview": "./node_modules/.bin/webpack-cli",
+		"build-preview": "webpack",
+		"package": "webpack --mode production --devtool hidden-source-map",
 		"watch": "npx tsc -watch -p ./tsconfig.json",
-		"postinstall": "node ./node_modules/vscode/bin/install",
-		"test": "npm run compile && node ./node_modules/vscode/bin/test",
-		"preversion": "npm run compile",
-		"version": "./node_modules/.bin/changes",
-		"postversion": "git push --follow-tags"
+		"lint": "eslint src --ext ts",
+		"test": "vscode-test"
 	},
 	"dependencies": {
-		"cheerio": "1.0.0-rc.2",
+		"axios": "^1.7.2",
+		"cheerio": "1.0.0-rc.12",
 		"lodash.throttle": "4.1.1",
-		"vscode-nls": "3.2.4"
+		"vscode-nls": "5.2.0"
 	},
 	"devDependencies": {
-		"@studio/changes": "1.7.0",
-		"@types/cheerio": "0.22.9",
-		"@types/lodash.throttle": "4.1.4",
-		"@types/mocha": "2.2.42",
-		"@types/node": "10.9.4",
-		"ts-loader": "4.0.1",
-		"tslib": "^1.9.3",
-		"tslint": "5.8.0",
-		"typescript": "3.0.3",
-		"vscode": "1.1.21",
-		"webpack": "4.19.0",
-		"webpack-cli": "3.1.0"
+		"@studio/changes": "3.0.0",
+		"@types/cheerio": "0.22.35",
+		"@types/lodash.throttle": "4.1.9",
+		"@types/mocha": "^10.0.7",
+		"@types/node": "20.x",
+		"@types/pako": "^2.0.3",
+		"@types/vscode": "^1.91.0",
+		"@typescript-eslint/eslint-plugin": "^7.14.1",
+		"@typescript-eslint/parser": "^7.11.0",
+		"@vscode/test-cli": "^0.0.9",
+		"@vscode/test-electron": "^2.4.0",
+		"eslint": "^8.57.0",
+		"pako": "^2.1.0",
+		"ts-loader": "^9.5.1",
+		"typescript": "^5.4.5",
+		"webpack": "^5.92.1",
+		"webpack-cli": "^5.1.4"
 	}
 }
