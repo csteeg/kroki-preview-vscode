@@ -6,12 +6,13 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { Logger } from "../logger";
+import { Logger } from "winston";
 import { disposeAll } from "../util/dispose";
 import { HTMLContentProvider } from "./previewContentProvider";
 
+import * as cheerio from "cheerio";
 import * as nls from "vscode-nls";
-import { getExtensionPath } from "../extension";
+import { getExtensionPath, getExtensionUri } from "../extension";
 import { isPreviewableFile } from "../util/file";
 const localize = nls.loadMessageBundle();
 
@@ -287,14 +288,46 @@ export class HTMLPreview {
     this.editor.title = HTMLPreview.getPreviewTitle(this._resource, this._locked);
     this.editor.iconPath = this.iconPath;
     this.editor.webview.options = HTMLPreview.getWebviewOptions(resource);
+    this.editor.webview.html = this.appendContentSecurityPolicyAndHandleUris(this._contentProvider.getLoaderHtml());
 
     this.forceUpdate = false;
 
     this.currentVersion = { resource, version: document.version };
-    const content: string = await this._contentProvider.loadPreview(document, this.editor.webview);
+    const content: string = await this._contentProvider.getPreviewHtml(document);
     if (this._resource === resource) {
-      this.editor.webview.html = content;
+      this.editor.webview.html = this.appendContentSecurityPolicyAndHandleUris(content);
     }
+  }
+
+  private appendContentSecurityPolicyAndHandleUris(content: string) {
+    const $ = cheerio.load(content);
+
+    $("head").append(
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src vscode-resource:; script-src vscode-resource: 'unsafe-inline'; style-src vscode-resource: 'unsafe-inline'; img-src vscode-resource: data:;\"/>"
+    );
+
+    // Convert relative script, css, and image links to vscode extension URIs
+    $("script[src], link[href], img[src]").each((_, element) => {
+      const $element = $(element);
+      const src = $element.attr("src");
+      const href = $element.attr("href");
+
+      if (src && !src.startsWith("http") && !src.startsWith("https") && !src.startsWith("data:")) {
+        $element.attr(
+          "src",
+          this.editor.webview.asWebviewUri(vscode.Uri.joinPath(getExtensionUri(), "media", src)).toString()
+        );
+      }
+
+      if (href && !href.startsWith("http") && !href.startsWith("https") && !href.startsWith("javascript:")) {
+        $element.attr(
+          "href",
+          this.editor.webview.asWebviewUri(vscode.Uri.joinPath(getExtensionUri(), "media", href)).toString()
+        );
+      }
+    });
+    const html = $.html();
+    return html;
   }
 
   private static getWebviewOptions(resource: vscode.Uri): vscode.WebviewOptions {

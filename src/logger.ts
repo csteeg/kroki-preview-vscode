@@ -32,7 +32,7 @@ function isString(value: any): value is string {
 export class Logger {
   private trace?: Trace;
 
-  private readonly outputChannel = lazy(() => vscode.window.createOutputChannel("HTML"));
+  private readonly outputChannel = lazy(() => vscode.window.createOutputChannel("KrokiPreview"));
 
   constructor() {
     this.updateConfiguration();

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from "vscode";
-import { Logger } from "../logger";
+import { Logger } from "winston";
 import { disposeAll } from "../util/dispose";
 import { HTMLPreview, PreviewSettings } from "./preview";
 import { HTMLContentProvider } from "./previewContentProvider";

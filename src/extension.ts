@@ -4,12 +4,26 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from "vscode";
+import { createLogger, Logger } from "winston";
+import { LogOutputChannelTransport } from "winston-transport-vscode";
 import { CommandManager } from "./commandManager";
 import * as commands from "./commands/index";
 import { HTMLContentProvider } from "./features/previewContentProvider";
 import { HTMLPreviewManager } from "./features/previewManager";
-import { Logger } from "./logger";
 import { isPreviewableFile } from "./util/file";
+
+// 2. Create a Log Output Channel for your extension with the VS Code API
+const outputChannel = vscode.window.createOutputChannel("Kroki Previewer", {
+  log: true,
+});
+
+// 3. Create the Winston logger giving it the Log Output Channel
+const logger = createLogger({
+  level: "trace", // Recommended: set the highest possible level
+  levels: LogOutputChannelTransport.config.levels, // Recommended: use predefined VS Code log levels
+  format: LogOutputChannelTransport.format(), // Recommended: use predefined format
+  transports: [new LogOutputChannelTransport({ outputChannel })],
+});
 
 let extensionPath = "";
 let extensionUri: vscode.Uri;
@@ -22,11 +36,14 @@ export function getExtensionUri(): vscode.Uri {
   return extensionUri;
 }
 
+export function getLogger(): Logger {
+  return logger;
+}
+
 export function activate(context: vscode.ExtensionContext) {
   extensionPath = context.extensionPath;
   extensionUri = context.extensionUri;
-
-  const logger = new Logger();
+  logger.debug("Extension activated", { extensionUri });
 
   const contentProvider = new HTMLContentProvider(context, logger);
   const previewManager = new HTMLPreviewManager(contentProvider, logger);
@@ -43,25 +60,23 @@ export function activate(context: vscode.ExtensionContext) {
   commandManager.register(new commands.OpenDocumentLinkCommand());
   commandManager.register(new commands.ToggleLockCommand(previewManager));
 
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(() => {
-      logger.updateConfiguration();
-    })
-  );
-
   vscode.workspace.onDidOpenTextDocument((document) => {
     if (isPreviewableFile(document)) {
+      logger.debug(`onDidOpenTextDocument: ${document.uri.fsPath} is a previewable file`);
       // Logic to show or enable the command/menu item
       vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", true);
     } else {
+      logger.debug(`onDidOpenTextDocument: ${document.uri.fsPath} is NOT a previewable file`);
       vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", false);
     }
   });
 
   vscode.workspace.textDocuments.forEach((document) => {
-    const extname = document.uri.fsPath.split(".").pop();
     if (isPreviewableFile(document)) {
+      logger.debug(`workspace textdocument: ${document.uri.fsPath} is a previewable file`);
       vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", true);
+    } else {
+      logger.debug(`workspace textdocument: ${document.uri.fsPath} is NOT a previewable file`);
     }
   });
 }

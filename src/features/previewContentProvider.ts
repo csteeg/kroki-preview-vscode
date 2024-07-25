@@ -4,14 +4,13 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import { getExtensionUri } from "../extension";
-import { Logger } from "../logger";
+import { Logger } from "winston";
 
 //this class needs some heavy refactoring, making it work first
 export class HTMLContentProvider {
   constructor(private readonly context: vscode.ExtensionContext, private readonly logger: Logger) {}
 
-  private async getImages(document: vscode.TextDocument): Promise<{ imgHtml: string; errorHtml: string }> {
+  private async getImagesHtml(document: vscode.TextDocument): Promise<{ imgHtml: string; errorHtml: string }> {
     const supportedFiles = vscode.workspace
       .getConfiguration("kroki")
       .get<{ extension: string; type: string }[]>("supportedFiles", []);
@@ -20,11 +19,12 @@ export class HTMLContentProvider {
     )?.type;
 
     if (diagram_type === undefined) {
+      this.logger.error("Unsupported file type for Kroki previewer");
       throw new Error("Unsupported file type for Kroki previewer");
     }
 
     if (diagram_type === "structurizr") {
-      return await this.getImagesForStructurizr(document);
+      return await this.getImagesHtmlForStructurizr(document);
     }
 
     return await this.getImageHtml(document.getText(), diagram_type);
@@ -32,6 +32,8 @@ export class HTMLContentProvider {
 
   private async getImageHtml(text: string, diagram_type: string): Promise<{ imgHtml: string; errorHtml: string }> {
     try {
+      this.logger.debug("Getting kroki svg for diagram type", { diagram_type });
+
       const response = await axios.post(
         `https://kroki.io`,
         {
@@ -59,9 +61,10 @@ export class HTMLContentProvider {
     }
   }
 
-  private async getImagesForStructurizr(
+  private async getImagesHtmlForStructurizr(
     document: vscode.TextDocument
   ): Promise<{ imgHtml: string; errorHtml: string }> {
+    this.logger.debug("Getting images for structurizr dsl");
     const structurizrCliFolder = path.join(this.context.extensionPath, "bin");
     const isWindows = os.platform() === "win32";
     const structurizrCliPath = isWindows
@@ -90,9 +93,12 @@ export class HTMLContentProvider {
       const dirCont = fs.readdirSync(tempFolder);
       const tempJsonFile = dirCont.find((elm) => elm.match(/.*\.(json?)/gi));
       if (!tempJsonFile) {
+        this.logger.error("Error converting structurizr files to json");
         throw new Error("Error converting structurizr files to json");
       }
       const tempJson = path.join(tempFolder, tempJsonFile);
+      this.logger.debug("Created json file", { tempJson });
+
       const toPumlCommand = `${commandprefix}${structurizrCliPath} export --workspace ${tempJson} --format plantuml --output ${tempFolder}`;
 
       cp.execSync(toPumlCommand);
@@ -113,6 +119,8 @@ export class HTMLContentProvider {
         }
       });
 
+      this.logger.debug("found views", { allViews });
+
       const sendPumlToKroki = async (pumlFileName: string) => {
         const pumlContent = fs.readFileSync(path.join(tempFolder, pumlFileName), "utf8");
         //filenames are in format of 'structurizr-{KEY}.puml', if we found them in the json, order by the order in the json
@@ -126,6 +134,8 @@ export class HTMLContentProvider {
         .readdirSync(tempFolder)
         .filter((file) => file.endsWith(".puml") && !file.endsWith("-key.puml"));
 
+      this.logger.debug("created puml files", { pumlFiles });
+
       const unOrderedDiagramContents = await Promise.all(pumlFiles.map((pumlFile) => sendPumlToKroki(pumlFile)));
       const diagramContents = unOrderedDiagramContents.sort((a, b) => a.order - b.order).map((content) => content.img);
 
@@ -134,6 +144,7 @@ export class HTMLContentProvider {
         errorHtml: diagramContents.map((content) => content.errorHtml).join(""),
       };
     } catch (error: any) {
+      this.logger.error("Error transforming structurizr files", { error });
       const errorDetail = (
         "stderr" in error ? error.stderr.toString() : error instanceof Error ? error.message : JSON.stringify(error)
       ).replace(cachedPostFix, "");
@@ -143,26 +154,23 @@ export class HTMLContentProvider {
       };
     } finally {
       try {
+        this.logger.debug("cleaning up temporary files", { tempFolder });
         if (isDirty) {
           fs.rmSync(filePath);
         }
         fs.rmSync(tempFolder, { recursive: true, force: true });
       } catch (error) {
+        this.logger.error("Error cleaning up temporary files", { error });
         vscode.window.showErrorMessage(`Error cleaning up temporary files: ${error}`);
       }
     }
   }
 
-  private getLoaderHtml(webview: vscode.Webview): string {
+  public getLoaderHtml(): string {
     return `
 <html>
 <head>
-    <link rel="stylesheet" href="${this.extensionResourcePath(webview, "css/preview.css")}">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${
-      webview.cspSource
-    } https:; script-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${
-      webview.cspSource
-    } 'unsafe-inline';">
+    <link rel="stylesheet" href="css/preview.css" />
 </head>
 <body>
     <div id="spinner-container">
@@ -181,16 +189,11 @@ export class HTMLContentProvider {
 </html>`;
   }
 
-  private errorDocumentContent(errorHtml: string, webview: vscode.Webview): string {
+  private errorDocumentContent(errorHtml: string): string {
     return `
 <html>
 <head>
-      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${
-        webview.cspSource
-      } https:; script-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${
-      webview.cspSource
-    } 'unsafe-inline';">
-      <link rel="stylesheet" href="${this.extensionResourcePath(webview, "css/error.css")}">
+      <link rel="stylesheet" href="css/error.css" />
 </head>
 <body>
     <div class="container">
@@ -200,19 +203,17 @@ export class HTMLContentProvider {
 </html>`;
   }
 
-  public async loadPreview(document: vscode.TextDocument, webview: vscode.Webview): Promise<string> {
-    this.logger.log("provideTextDocumentContent", { source: document.uri.toString(), cspSource: webview.cspSource });
+  public async getPreviewHtml(document: vscode.TextDocument): Promise<string> {
+    this.logger.debug("provideTextDocumentContent", { source: document.uri.toString() });
 
-    webview.html = this.getLoaderHtml(webview);
-
-    let { imgHtml, errorHtml } = await this.getImages(document);
+    let { imgHtml, errorHtml } = await this.getImagesHtml(document);
 
     if (imgHtml === "" && errorHtml === "") {
       errorHtml = "<h3>Error</h3><p>We do not have any image to show.</p>";
     }
 
     if (errorHtml && errorHtml !== "" && (imgHtml === "" || !imgHtml)) {
-      return this.errorDocumentContent(errorHtml, webview);
+      return this.errorDocumentContent(errorHtml);
     }
 
     const settings = JSON.stringify({
@@ -224,23 +225,18 @@ export class HTMLContentProvider {
     return `
 <html>
 <head>
-    <link rel="stylesheet" href="${this.extensionResourcePath(webview, "css/preview.css")}">
-    <script src="${this.extensionResourcePath(webview, "js/dragscroll.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/hyperlink.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/switcher.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/zoom.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/imageMapResizer.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/preview.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/cursor.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/selectionZoom.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/clickEvent.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/modal.js")}"></script>
-    <script src="${this.extensionResourcePath(webview, "js/tip.js")}"></script>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${
-      webview.cspSource
-    } https:; script-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${
-      webview.cspSource
-    } 'unsafe-inline';">
+    <link rel="stylesheet" href="css/preview.css" />
+    <script src="js/dragscroll.js"></script>
+    <script src="js/hyperlink.js"></script>
+    <script src="js/switcher.js"></script>
+    <script src="js/zoom.js"></script>
+    <script src="js/imageMapResizer.js"></script>
+    <script src="js/preview.js"></script>
+    <script src="js/cursor.js"></script>
+    <script src="js/selectionZoom.js"></script>
+    <script src="js/clickEvent.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/tip.js"></script>
 </head>
 <body>
     <div id="snap-indicator-container">
@@ -354,9 +350,5 @@ export class HTMLContentProvider {
 
     vscode.window.showErrorMessage(`Kroki API Error: ${title} -> ${details}`);
     return `<h3>${title}</h3><p>${details}.</p>`;
-  }
-
-  private extensionResourcePath(webview: vscode.Webview, mediaFile: string): vscode.Uri {
-    return webview.asWebviewUri(vscode.Uri.joinPath(getExtensionUri(), "media", mediaFile));
   }
 }

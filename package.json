@@ -2,7 +2,7 @@
 	"name": "kroki-preview-vscode",
 	"displayName": "%displayName%",
 	"description": "%description%",
-	"version": "0.0.4",
+	"version": "0.0.6",
 	"publisher": "chrisvandesteeg",
 	"author": "Chris van de Steeg",
 	"license": "MIT",
@@ -69,12 +69,20 @@
 			{
 				"command": "kroki.preview.refresh",
 				"title": "%kroki.preview.refresh.title%",
-				"category": "Kroki"
+				"category": "Kroki",
+				"icon": {
+					"light": "./media/refresh.svg",
+					"dark": "./media/refresh_dark.svg"
+				}
 			},
 			{
 				"command": "kroki.preview.toggleLock",
 				"title": "%kroki.preview.toggleLock.title%",
-				"category": "Kroki"
+				"category": "Kroki",
+				"icon": {
+					"light": "./media/lock.svg",
+					"dark": "./media/lock_dark.svg"
+				}
 			}
 		],
 		"menus": {
@@ -105,11 +113,21 @@
 					"command": "kroki.showPreview",
 					"when": "kroki.previewCommandsEnabled  && !kroki.PreviewFocus",
 					"group": "navigation"
+				},
+				{
+					"command": "kroki.showPreviewToSide",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
+					"group": "navigation"
 				}
 			],
 			"editor/title/context": [
 				{
 					"command": "kroki.showPreview",
+					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
+					"group": "navigation"
+				},
+				{
+					"command": "kroki.showPreviewToSide",
 					"when": "kroki.previewCommandsEnabled && !kroki.PreviewFocus",
 					"group": "navigation"
 				}
@@ -138,6 +156,10 @@
 				{
 					"command": "kroki.preview.toggleLock",
 					"when": "kroki.PreviewFocus"
+				},
+				{
+					"command": "kroki.preview.refresh",
+					"when": "kroki.PreviewFocus"
 				}
 			]
 		},
@@ -160,16 +182,6 @@
 			"title": "HTML",
 			"order": 20,
 			"properties": {
-				"kroki.trace": {
-					"type": "string",
-					"enum": [
-						"off",
-						"verbose"
-					],
-					"default": "off",
-					"description": "%kroki.trace.desc%",
-					"scope": "window"
-				},
 				"kroki.supportedFiles": {
 					"type": "array",
 					"items": {
@@ -319,7 +331,8 @@
 		"axios": "^1.7.2",
 		"cheerio": "1.0.0-rc.12",
 		"lodash.throttle": "4.1.1",
-		"vscode-nls": "5.2.0"
+		"vscode-nls": "5.2.0",
+		"winston-transport-vscode": "^0.1.0"
 	},
 	"devDependencies": {
 		"@studio/changes": "3.0.0",
