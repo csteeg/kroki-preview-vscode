@@ -2,7 +2,7 @@
 	"name": "kroki-preview-vscode",
 	"displayName": "%displayName%",
 	"description": "%description%",
-	"version": "0.0.6",
+	"version": "0.0.10",
 	"publisher": "chrisvandesteeg",
 	"author": "Chris van de Steeg",
 	"license": "MIT",
@@ -26,7 +26,7 @@
 		"Programming Languages"
 	],
 	"activationEvents": [
-		"*"
+		"onFileSystem:file"
 	],
 	"contributes": {
 		"commands": [
@@ -303,27 +303,13 @@
 		}
 	},
 	"scripts": {
-		"dist:stable": "vsce package",
-		"dist": "vsce package --pre-release",
-		"vscode:prepublish": "npm run package",
+		"package": "vsce package --allow-star-activation",
+		"prerelease": "vsce package --pre-release --allow-star-activation",
+		"vscode:prepublish": "npm run compile:dist",
 		"compile": "webpack --mode development --stats-error-details",
-		"bak.compile": "npm run compile-ext && npm run compile-previewer",
-		"compile-ext": "webpack --mode development --stats-error-details",
-		"compile-previewer": "webpack --mode development --stats-error-details --config preview-src/webpack.config.js",
+		"compile:dist": "webpack --mode production --devtool hidden-source-map",
 		"watch": "webpack --mode development --stats-error-details --watch",
-		"package": "webpack --mode production --devtool hidden-source-map",
-		"lint": "eslint src --ext ts",
-		"test": "vscode-test"
-	},
-	"scripts.bak": {
-		"dist:stable": "vsce package",
-		"dist": "vsce package --pre-release",
-		"vscode:prepublish": "npm run compile",
-		"compile": "npm run build-ext && npm run build-preview",
-		"build-ext": "npx tsc -p ./tsconfig.json",
-		"build-preview": "webpack",
-		"package": "webpack --mode production --devtool hidden-source-map",
-		"watch": "npx tsc -watch -p ./tsconfig.json",
+		"publish": "vsce publish --allow-star-activation",
 		"lint": "eslint src --ext ts",
 		"test": "vscode-test"
 	},

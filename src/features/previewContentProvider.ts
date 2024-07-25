@@ -144,10 +144,10 @@ export class HTMLContentProvider {
         errorHtml: diagramContents.map((content) => content.errorHtml).join(""),
       };
     } catch (error: any) {
-      this.logger.error("Error transforming structurizr files", { error });
       const errorDetail = (
         "stderr" in error ? error.stderr.toString() : error instanceof Error ? error.message : JSON.stringify(error)
       ).replace(cachedPostFix, "");
+      this.logger.error("Error transforming structurizr files", { errorDetail });
       return {
         imgHtml: "",
         errorHtml: `<h3>Error transforming structurizr files</h3><pre>${errorDetail}</pre>`,

@@ -60,13 +60,24 @@ export function activate(context: vscode.ExtensionContext) {
   commandManager.register(new commands.OpenDocumentLinkCommand());
   commandManager.register(new commands.ToggleLockCommand(previewManager));
 
-  vscode.workspace.onDidOpenTextDocument((document) => {
+  vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (!editor) {
+      logger.debug("onDidChangeActiveTextEditor: no active editor");
+      return;
+    }
+
+    const document = editor.document;
+    if (document.uri.scheme !== "file") {
+      logger.debug(`onDidChangeActiveTextEditor: ${document.uri} is not a file scheme file`);
+      return;
+    }
+
     if (isPreviewableFile(document)) {
-      logger.debug(`onDidOpenTextDocument: ${document.uri.fsPath} is a previewable file`);
+      logger.debug(`onDidOpenTextDocument: ${document.uri} is a previewable file`);
       // Logic to show or enable the command/menu item
       vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", true);
     } else {
-      logger.debug(`onDidOpenTextDocument: ${document.uri.fsPath} is NOT a previewable file`);
+      logger.debug(`onDidOpenTextDocument: ${document.uri} is NOT a previewable file`);
       vscode.commands.executeCommand("setContext", "kroki.previewCommandsEnabled", false);
     }
   });

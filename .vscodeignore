@@ -12,3 +12,5 @@ tslint.json
 webpack.config.js
 .git/**
 .vscode-test/**
+node_modules/**
+.*
