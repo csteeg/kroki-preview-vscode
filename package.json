@@ -299,7 +299,12 @@
 					],
 					"description": "File extensions supported by the Kroki previewer"
 				}
-			}
+			},
+        		"kroki.url": {
+				"type": "string",
+          			"description": "The URL of the Kroki server",
+          			"default": "https://kroki.io"
+			},
 		}
 	},
 	"scripts": {
