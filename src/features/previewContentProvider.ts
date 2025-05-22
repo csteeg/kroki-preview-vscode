@@ -31,11 +31,14 @@ export class HTMLContentProvider {
   }
 
   private async getImageHtml(text: string, diagram_type: string): Promise<{ imgHtml: string; errorHtml: string }> {
+    const serverUrl = vscode.workspace
+      .getConfiguration("kroki")
+      .get<string>("url", "https://kroki.io");
     try {
       this.logger.debug("Getting kroki svg for diagram type", { diagram_type });
 
       const response = await axios.post(
-        `https://kroki.io`,
+        serverUrl,
         {
           diagram_source: text,
           diagram_type: diagram_type,
